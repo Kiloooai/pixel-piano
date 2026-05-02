@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Piano</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', monospace;
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #f0f;
+            text-shadow: 0 0 15px #f0f;
+            letter-spacing: 3px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+        }
+
+        .control-group {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,255,255,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #ff0;
+            letter-spacing: 1px;
+        }
+
+        select, button {
+            background: #000;
+            color: #0ff;
+            border: 1px solid #0ff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: inherit;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        button:hover {
+            background: rgba(0,255,255,0.1);
+            box-shadow: 0 0 10px rgba(0,255,255,0.3);
+        }
+
+        button.active {
+            background: #0ff;
+            color: #000;
+        }
+
+        .piano {
+            display: flex;
+            position: relative;
+            background: #222;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .key {
+            width: 50px;
+            height: 200px;
+            background: linear-gradient(to bottom, #fff 0%, #e8e8e8 100%);
+            border: 1px solid #999;
+            border-radius: 0 0 5px 5px;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.05s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-size: 12px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .key.black {
+            background: linear-gradient(to bottom, #333 0%, #111 100%);
+            color: #fff;
+            height: 130px;
+            width: 35px;
+            margin-left: -20px;
+            margin-right: -20px;
+            z-index: 1;
+            border: 1px solid #000;
+        }
+
+        .key:active, .key.pressed {
+            background: linear-gradient(to bottom, #ff0 0%, #f0f 100%);
+            transform: translateY(2px);
+            box-shadow: 0 0 15px #f0f;
+        }
+
+        .key.black:active, .key.black.pressed {
+            background: linear-gradient(to bottom, #f0f 0%, #ff0 100%);
+        }
+
+        .visualizer {
+            width: 800px;
+            height: 100px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            margin-top: 20px;
+            image-rendering: pixelated;
+        }
+
+        .info {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .shortcut-hint {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #666;
+        }
+
+        .keyboard-hints {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+        }
+
+        .octave-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .octave-control button {
+            width: 30px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎹 PIXEL PIANO</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Waveform</label>
+            <select id="waveform">
+                <option value="square">Square (8-bit)</option>
+                <option value="sawtooth">Sawtooth (sharp)</option>
+                <option value="triangle">Triangle (soft)</option>
+                <option value="sine">Sine (pure)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Attack</label>
+            <input type="range" id="attack" min="0.01" max="1" step="0.01" value="0.05">
+        </div>
+
+        <div class="control-group">
+            <label>Release</label>
+            <input type="range" id="release" min="0.01" max="2" step="0.01" value="0.3">
+        </div>
+
+        <div class="control-group">
+            <label>Volume</label>
+            <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5">
+        </div>
+
+        <div class="control-group">
+            <label>Octave</label>
+            <div class="octave-control">
+                <button id="octaveDown">-</button>
+                <span id="octaveDisplay">4</span>
+                <button id="octaveUp">+</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Arpeggiator</label>
+            <button id="arpToggle">OFF</button>
+        </div>
+
+        <div class="control-group">
+            <label>Visualizer</label>
+            <button id="vizToggle">ON</button>
+        </div>
+    </div>
+
+    <div class="piano" id="piano">
+        <!-- Keys generated by JS -->
+    </div>
+
+    <canvas class="visualizer" id="visualizer" width="800" height="100"></canvas>
+
+    <div class="keyboard-hints">
+        Use keyboard: A W E R T Y U I O P for white keys, W E T Y U for black (depending on layout)
+    </div>
+
+    <div class="info">
+        Click keys or use keyboard. Adjust waveform for different 8-bit flavors. Arpeggiator creates automatic patterns. Visualizer shows output wave. No speakers? That's a you problem.
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const pianoEl = document.getElementById('piano');
+        const visualizerCanvas = document.getElementById('visualizer');
+        const vizCtx = visualizerCanvas.getContext('2d');
+
+        // Settings
+        let waveform = 'square';
+        let attack = 0.05;
+        let release = 0.3;
+        let volume = 0.5;
+        let octave = 4;
+        let arpeggioOn = false;
+        let vizOn = true;
+        let arpeggioInterval;
+        let arpeggioNotes = [];
+        let arpeggioIndex = 0;
+
+        // Note frequencies (C4 = 261.63)
+        const noteFrequencies = {
+            'C': 261.63,
+            'C#': 277.18,
+            'D': 293.66,
+            'D#': 311.13,
+            'E': 329.63,
+            'F': 349.23,
+            'F#': 369.99,
+            'G': 392.00,
+            'G#': 415.30,
+            'A': 440.00,
+            'A#': 466.16,
+            'B': 493.88
+        };
+
+        const keyMap = {
+            'a': 'C',
+            'w': 'C#',
+            's': 'D',
+            'e': 'D#',
+            'd': 'E',
+            'f': 'F',
+            't': 'F#',
+            'g': 'G',
+            'y': 'G#',
+            'h': 'A',
+            'u': 'A#',
+            'j': 'B',
+            'k': 'C2',
+            'o': 'C#2',
+            'l': 'D2'
+        };
+
+        const keyOrder = [
+            { note: 'C', type: 'white', key: 'a' },
+            { note: 'C#', type: 'black', key: 'w' },
+            { note: 'D', type: 'white', key: 's' },
+            { note: 'D#', type: 'black', key: 'e' },
+            { note: 'E', type: 'white', key: 'd' },
+            { note: 'F', type: 'white', key: 'f' },
+            { note: 'F#', type: 'black', key: 't' },
+            { note: 'G', type: 'white', key: 'g' },
+            { note: 'G#', type: 'black', key: 'y' },
+            { note: 'A', type: 'white', key: 'h' },
+            { note: 'A#', type: 'black', key: 'u' },
+            { note: 'B', type: 'white', key: 'j' },
+            { note: 'C2', type: 'white', key: 'k' },
+            { note: 'C#2', type: 'black', key: 'o' },
+            { note: 'D2', type: 'white', key: 'l' }
+        ];
+
+        // Build piano
+        function buildPiano() {
+            keyOrder.forEach((k, i) => {
+                const keyEl = document.createElement('div');
+                keyEl.className = 'key' + (k.type === 'black' ? ' black' : '');
+                keyEl.dataset.note = k.note;
+                keyEl.innerHTML = `<span class="shortcut-hint">${k.key.toUpperCase()}</span>`;
+                pianoEl.appendChild(keyEl);
+            });
+        }
+        buildPiano();
+
+        // Audio
+        function playNote(note, duration = null) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            // Map extended notes
+            let baseNote = note;
+            let octaveOffset = 0;
+            if (note === 'C2') { baseNote = 'C'; octaveOffset = 1; }
+            if (note === 'C#2') { baseNote = 'C#'; octaveOffset = 1; }
+            if (note === 'D2') { baseNote = 'D'; octaveOffset = 1; }
+
+            const freq = noteFrequencies[baseNote] * Math.pow(2, octave + octaveOffset);
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.type = waveform;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            // Envelope
+            const now = audioCtx.currentTime;
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(volume, now + attack);
+            if (duration) {
+                gainNode.gain.setValueAtTime(volume, now + duration - release);
+                gainNode.gain.linearRampToValueAtTime(0, now + duration);
+            } else {
+                gainNode.gain.setValueAtTime(volume, now + 0.1); // brief plateau
+            }
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start();
+            if (duration) {
+                osc.stop(now + duration);
+            } else {
+                osc.stop(now + 1); // auto-stop after 1s if not held
+            }
+
+            // Visual feedback
+            const keyEl = document.querySelector(`.key[data-note="${note}"]`);
+            if (keyEl) {
+                keyEl.classList.add('pressed');
+                setTimeout(() => keyEl.classList.remove('pressed'), 150);
+            }
+
+            // Visualizer
+            if (vizOn) drawWave(freq);
+        }
+
+        // Simple wave visualizer
+        let vizPhase = 0;
+        function drawWave(freq) {
+            const w = visualizerCanvas.width;
+            const h = visualizerCanvas.height;
+            vizCtx.fillStyle = 'rgba(0,0,0,0.2)';
+            vizCtx.fillRect(0,0,w,h);
+
+            vizCtx.beginPath();
+            vizCtx.strokeStyle = '#f0f';
+            vizCtx.lineWidth = 2;
+            for (let x = 0; x < w; x++) {
+                const y = h/2 + Math.sin((x + vizPhase) * freq/200) * (h/3);
+                vizCtx.lineTo(x, y);
+            }
+            vizCtx.stroke();
+            vizPhase += 20;
+        }
+
+        // Continuous visualizer with analyser
+        let analyser, dataArray;
+        function setupAnalyser() {
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            // Connect analyser between master gain and destination? Better: dupe
+        }
+
+        // Instead of per-note visual, let's do continuous canvas animation of output
+        // We'll route all nodes through a master gain connected to analyser then destination
+
+        // Redo audio chain: use a master gain node for visualizer
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 1;
+        // Later connect each note to masterGain instead of destination
+        // But also need to connect masterGain to destination
+        // We'll do that in playNote
+
+        function playNote(note, duration = null) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            let baseNote = note;
+            let octaveOffset = 0;
+            if (note === 'C2') { baseNote = 'C'; octaveOffset = 1; }
+            if (note === 'C#2') { baseNote = 'C#'; octaveOffset = 1; }
+            if (note === 'D2') { baseNote = 'D'; octaveOffset = 1; }
+
+            const freq = noteFrequencies[baseNote] * Math.pow(2, octave + octaveOffset);
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.type = waveform;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            const now = audioCtx.currentTime;
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(volume, now + attack);
+            if (duration) {
+                gainNode.gain.setValueAtTime(volume, now + duration - release);
+                gainNode.gain.linearRampToValueAtTime(0, now + duration);
+            } else {
+                gainNode.gain.setValueAtTime(volume, now + 0.1);
+                gainNode.gain.linearRampToValueAtTime(0, now + 1);
+            }
+
+            osc.connect(gainNode);
+            gainNode.connect(masterGain); // Connect to master for visualization
+
+            osc.start();
+            if (duration) osc.stop(now + duration);
+            else osc.stop(now + 1);
+
+            // Visual feedback
+            const keyEl = document.querySelector(`.key[data-note="${note}"]`);
+            if (keyEl) {
+                keyEl.classList.add('pressed');
+                setTimeout(() => keyEl.classList.remove('pressed'), 150);
+            }
+        }
+
+        // Connect master to destination and analyser after all playNote redefinitions
+        masterGain.connect(audioCtx.destination);
+        // Also create analyser connected to master
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        masterGain.connect(analyser); // tap before destination
+
+        // Visualization loop
+        function vizLoop() {
+            if (!vizOn) {
+                requestAnimationFrame(vizLoop);
+                return;
+            }
+            analyser.getByteFrequencyData(dataArray);
+            const w = visualizerCanvas.width;
+            const h = visualizerCanvas.height;
+            vizCtx.fillStyle = 'rgba(0,0,0,0.3)';
+            vizCtx.fillRect(0,0,w,h);
+
+            const barWidth = w / dataArray.length;
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = (dataArray[i] / 255) * h;
+                const hue = (i / dataArray.length) * 360;
+                vizCtx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+                vizCtx.fillRect(i*barWidth, h - barHeight, barWidth - 2, barHeight);
+            }
+            requestAnimationFrame(vizLoop);
+        }
+        vizLoop();
+
+        // Interactions
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('mousedown', () => {
+                const note = key.dataset.note;
+                playNote(note);
+            });
+        });
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            const key = e.key.toLowerCase();
+            const note = keyMap[key];
+            if (note) playNote(note);
+        });
+
+        // Controls
+        document.getElementById('waveform').addEventListener('change', (e) => waveform = e.target.value);
+        document.getElementById('attack').addEventListener('input', (e) => attack = parseFloat(e.target.value));
+        document.getElementById('release').addEventListener('input', (e) => release = parseFloat(e.target.value));
+        document.getElementById('volume').addEventListener('input', (e) => volume = parseFloat(e.target.value));
+
+        // Octave
+        document.getElementById('octaveUp').addEventListener('click', () => {
+            octave = Math.min(octave + 1, 7);
+            document.getElementById('octaveDisplay').textContent = octave;
+        });
+        document.getElementById('octaveDown').addEventListener('click', () => {
+            octave = Math.max(octave - 1, 0);
+            document.getElementById('octaveDisplay').textContent = octave;
+        });
+
+        // Arpeggiator
+        const arpBtn = document.getElementById('arpToggle');
+        arpBtn.addEventListener('click', () => {
+            arpeggioOn = !arpeggioOn;
+            arpBtn.textContent = arpeggioOn ? 'ON' : 'OFF';
+            arpBtn.classList.toggle('active', arpeggioOn);
+            if (arpeggioOn) {
+                // Build arpeggio pattern: C major arpeggio across available notes
+                arpeggioNotes = ['C', 'E', 'G', 'C2'];
+                arpeggioIndex = 0;
+                arpeggioInterval = setInterval(() => {
+                    playNote(arpeggioNotes[arpeggioIndex]);
+                    arpeggioIndex = (arpeggioIndex + 1) % arpeggioNotes.length;
+                }, 300);
+            } else {
+                clearInterval(arpeggioInterval);
+            }
+        });
+
+        // Visualizer toggle
+        const vizBtn = document.getElementById('vizToggle');
+        vizBtn.addEventListener('click', () => {
+            vizOn = !vizOn;
+            vizBtn.textContent = vizOn ? 'ON' : 'OFF';
+            vizBtn.classList.toggle('active', vizOn);
+        });
+
+        // Initial
+        buildPiano();
+    </script>
+</body>
+</html>
